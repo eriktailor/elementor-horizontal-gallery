@@ -170,6 +170,16 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                 function updateTrack() {
                     track.style.transform = 'translateX(' + (-currentScrollX) + 'px)';
                 }
+                
+                // Reset for mobile
+                function checkMobile() {
+                    if (window.innerWidth <= 768) {
+                        track.style.transform = '';
+                        currentScrollX = 0;
+                    }
+                }
+                
+                window.addEventListener('resize', checkMobile);
 
                 function onWheel(e) {
                     // Mobile check
@@ -275,6 +285,18 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                     overflow: hidden;
                     display: flex;
                     align-items: flex-start;
+                
+                @media (max-width: 768px) {
+                    .elementor-element-{{ id }} .et-sticky-wrapper {
+                        overflow-x: auto;
+                        -webkit-overflow-scrolling: touch;
+                        scrollbar-width: none;
+                    }
+                    .elementor-element-{{ id }} .et-sticky-wrapper::-webkit-scrollbar { 
+                        display: none;
+                    }
+                }
+                
                 }
                 .elementor-element-{{ id }} .et-horizontal-track {
                     display: flex;
@@ -285,6 +307,18 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                     padding: 0;
                     will-change: transform;
                 }
+                
+                @media (max-width: 768px) {
+                    .elementor-element-{{ id }} .et-sticky-wrapper {
+                        overflow-x: auto;
+                        -webkit-overflow-scrolling: touch;
+                        scrollbar-width: none;
+                    }
+                    .elementor-element-{{ id }} .et-sticky-wrapper::-webkit-scrollbar { 
+                        display: none;
+                    }
+                }
+                
                 .elementor-element-{{ id }} .et-scroll-item {
                     flex: 0 0 {{ finalItemWidth }}%;
                     flex: 0 0 calc((100% / {{ visibleItems }}) - {{ settings.gap_width.size }}{{ settings.gap_width.unit }});
