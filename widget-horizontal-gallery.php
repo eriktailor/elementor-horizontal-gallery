@@ -132,7 +132,7 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                 height: 100%;
                 align-items: center;
                 gap: <?php echo $gap; ?>px;
-                padding: 0 5vw; /* Optional padding */
+                padding: 0; /* Optional padding */
                 will-change: transform;
             }
             .et-scroll-item {
