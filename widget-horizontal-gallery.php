@@ -93,90 +93,177 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
         
         // Calculate item width based on visible items
         $item_width = 100 / $visible_items;
-        
-        // Calculate total gap space
         $total_gaps = $visible_items - 1;
         $gap_space = ( $total_gaps * $gap ) / $visible_items;
-        
-        // Final item width accounting for gaps
         $final_item_width = $item_width - $gap_space;
         
+        $widget_id = 'et-gallery-' . $this->get_id();
         ?>
-        <div class="et-scroll-wrapper">
-            <div class="et-scroll-container">
-                <?php foreach ( $settings['gallery_images'] as $image ) : ?>
-                    <div class="et-scroll-item">
-                        <?php echo wp_get_attachment_image( $image['id'], 'medium_large' ); ?>
-                    </div>
-                <?php endforeach; ?>
+        <div class="et-gallery-section" id="<?php echo esc_attr($widget_id); ?>">
+            <div class="et-sticky-wrapper">
+                <div class="et-horizontal-track">
+                    <?php foreach ( $settings['gallery_images'] as $image ) : ?>
+                        <div class="et-scroll-item">
+                            <?php echo wp_get_attachment_image( $image['id'], 'medium_large' ); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
 
         <style>
-            .et-scroll-wrapper { 
-                width: 100%; 
-                overflow-x: auto; 
-                overflow-y: hidden; 
-                -webkit-overflow-scrolling: touch; 
-                scrollbar-width: thin; 
-                scroll-behavior: smooth;
+            .et-gallery-section {
+                /* Height will be set by JS */
+                width: 100%;
+                position: relative;
             }
-            
-            .et-scroll-wrapper::-webkit-scrollbar {
-                height: 6px;
-            }
-            
-            .et-scroll-wrapper::-webkit-scrollbar-track {
-                background: #f1f1f1;
-            }
-            
-            .et-scroll-wrapper::-webkit-scrollbar-thumb {
-                background: #888;
-                border-radius: 3px;
-            }
-            
-            .et-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-                background: #555;
-            }
-            
-            .et-scroll-container { 
-                display: flex; 
-                flex-direction: row; 
-                flex-wrap: nowrap; 
-                align-items: stretch;
-                gap: <?php echo $gap; ?>px;
-                padding-bottom: 8px;
-            }
-            
-            .et-scroll-item { 
-                flex: 0 0 <?php echo $final_item_width; ?>%; 
-                min-width: 0;
+            .et-sticky-wrapper {
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                width: 100%;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
+            }
+            .et-horizontal-track {
+                display: flex;
+                flex-wrap: nowrap;
+                height: 100%;
+                align-items: center;
+                gap: <?php echo $gap; ?>px;
+                padding: 0 5vw; /* Optional padding */
+                will-change: transform;
+            }
+            .et-scroll-item {
+                flex: 0 0 <?php echo $final_item_width; ?>%;
+                /* Make it responsive based on viewport width instead of percentage of parent if needed, 
+                   but percentage of parent is fine inside the track which will be wide */
+                flex: 0 0 calc((100vw / <?php echo $visible_items; ?>) - <?php echo $gap; ?>px); 
+                max-width: calc((100vw / <?php echo $visible_items; ?>) - <?php echo $gap; ?>px);
+                
+                display: flex;
                 justify-content: center;
+                align-items: center;
             }
-            
-            .et-scroll-item img { 
-                height: auto; 
-                max-height: <?php echo $image_height; ?>px; 
-                width: 100%; 
+            .et-scroll-item img {
+                width: 100%;
+                height: auto;
+                max-height: <?php echo $image_height; ?>px;
                 object-fit: cover;
-                display: block; 
-            }
-            
-            @media (max-width: 1024px) {
-                .et-scroll-wrapper {
-                    overflow-x: scroll;
-                }
-            }
-            
-            @media (max-width: 768px) {
-                .et-scroll-container {
-                    gap: <?php echo max(10, $gap - 5); ?>px;
-                }
+                display: block;
             }
         </style>
+
+        <script>
+        (function($) {
+            var widgetId = '<?php echo esc_js($widget_id); ?>';
+            
+            function initHorizontalScroll() {
+                var section = document.getElementById(widgetId);
+                
+                if (!section) return;
+
+                var stickyWrapper = section.querySelector('.et-sticky-wrapper');
+                var track = section.querySelector('.et-horizontal-track');
+                
+                if (!stickyWrapper || !track) return;
+
+                var animationFrameId;
+
+                function setDimensions() {
+                    if (window.innerWidth <= 768) {
+                        section.style.height = 'auto';
+                        track.style.transform = 'none';
+                        return;
+                    }
+
+                    var trackWidth = track.scrollWidth;
+                    var viewportWidth = window.innerWidth;
+                    var scrollDistance = trackWidth - viewportWidth;
+                    
+                    var totalHeight = window.innerHeight + scrollDistance;
+                    
+                    if (scrollDistance > 0) {
+                        section.style.height = totalHeight + 'px';
+                    } else {
+                        section.style.height = 'auto';
+                    }
+                }
+
+                function onScroll() {
+                    if (window.innerWidth <= 768) return;
+
+                    var rect = section.getBoundingClientRect();
+                    var sectionTop = rect.top;
+                    
+                    var moveX = -sectionTop;
+                    
+                    var trackWidth = track.scrollWidth;
+                    var viewportWidth = window.innerWidth;
+                    var maxTranslate = trackWidth - viewportWidth;
+                    
+                    if (moveX < 0) moveX = 0;
+                    if (moveX > maxTranslate) moveX = maxTranslate;
+                    
+                    track.style.transform = 'translateX(-' + moveX + 'px)';
+                }
+
+                function onScrollThrottled() {
+                     if (animationFrameId) {
+                         cancelAnimationFrame(animationFrameId);
+                     }
+                     animationFrameId = requestAnimationFrame(onScroll);
+                }
+
+                window.addEventListener('resize', setDimensions);
+                window.addEventListener('scroll', onScrollThrottled);
+                
+                var images = track.querySelectorAll('img');
+                var loadedImages = 0;
+                
+                if (images.length > 0) {
+                    images.forEach(function(img) {
+                        if (img.complete) {
+                            loadedImages++;
+                        } else {
+                            img.addEventListener('load', function() {
+                                loadedImages++;
+                                if (loadedImages === images.length) {
+                                    setDimensions();
+                                    onScroll();
+                                }
+                            });
+                        }
+                    });
+                    
+                    if (loadedImages === images.length) {
+                        setDimensions();
+                        onScroll();
+                    }
+                } else {
+                    setDimensions();
+                    onScroll();
+                }
+                
+                setTimeout(function() {
+                    setDimensions();
+                    onScroll();
+                }, 500);
+            }
+
+            if ( window.elementorFrontend ) {
+                elementorFrontend.hooks.addAction( 'frontend/element_ready/horizontal_scroll_gallery.default', function($scope){
+                    // Check if this is the correct widget
+                    if ( $scope.find('#' + widgetId).length ) {
+                        initHorizontalScroll();
+                    }
+                });
+            } else {
+                jQuery(document).ready(initHorizontalScroll);
+            }
+        })(jQuery);
+        </script>
         <?php
     }
 
