@@ -113,18 +113,15 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
 
         <style>
             .et-gallery-section {
-                /* Height will be set by JS */
                 width: 100%;
                 position: relative;
+                overflow: hidden; /* Hide the track that sticks out */
             }
             .et-sticky-wrapper {
-                position: sticky;
-                top: 0;
-                height: 100vh;
                 width: 100%;
                 overflow: hidden;
                 display: flex;
-                align-items: center;
+                align-items: flex-start;
             }
             .et-horizontal-track {
                 display: flex;
@@ -132,7 +129,7 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                 height: 100%;
                 align-items: center;
                 gap: <?php echo $gap; ?>px;
-                padding: 0; /* Optional padding */
+                padding: 0;
                 will-change: transform;
             }
             .et-scroll-item {
@@ -161,102 +158,79 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
             
             function initHorizontalScroll() {
                 var section = document.getElementById(widgetId);
-                
                 if (!section) return;
 
-                var stickyWrapper = section.querySelector('.et-sticky-wrapper');
                 var track = section.querySelector('.et-horizontal-track');
-                
-                if (!stickyWrapper || !track) return;
+                if (!track) return;
 
-                var animationFrameId;
+                // State
+                var currentScrollX = 0;
 
-                function setDimensions() {
-                    if (window.innerWidth <= 768) {
-                        section.style.height = 'auto';
-                        track.style.transform = 'none';
-                        return;
-                    }
-
-                    var trackWidth = track.scrollWidth;
-                    var viewportWidth = window.innerWidth;
-                    var scrollDistance = trackWidth - viewportWidth;
-                    
-                    var totalHeight = window.innerHeight + scrollDistance;
-                    
-                    if (scrollDistance > 0) {
-                        section.style.height = totalHeight + 'px';
-                    } else {
-                        section.style.height = 'auto';
-                    }
+                // Update track position
+                function updateTrack() {
+                    track.style.transform = 'translateX(' + (-currentScrollX) + 'px)';
                 }
 
-                function onScroll() {
+                function onWheel(e) {
+                    // Mobile check
                     if (window.innerWidth <= 768) return;
 
-                    var rect = section.getBoundingClientRect();
-                    var sectionTop = rect.top;
-                    
-                    var moveX = -sectionTop;
-                    
                     var trackWidth = track.scrollWidth;
-                    var viewportWidth = window.innerWidth;
-                    var maxTranslate = trackWidth - viewportWidth;
-                    
-                    if (moveX < 0) moveX = 0;
-                    if (moveX > maxTranslate) moveX = maxTranslate;
-                    
-                    track.style.transform = 'translateX(-' + moveX + 'px)';
-                }
+                    var containerWidth = section.clientWidth;
+                    var maxScroll = trackWidth - containerWidth;
 
-                function onScrollThrottled() {
-                     if (animationFrameId) {
-                         cancelAnimationFrame(animationFrameId);
-                     }
-                     animationFrameId = requestAnimationFrame(onScroll);
-                }
+                    // If content fits, no horizontal scroll needed
+                    if (maxScroll <= 0) return;
 
-                window.addEventListener('resize', setDimensions);
-                window.addEventListener('scroll', onScrollThrottled);
-                
-                var images = track.querySelectorAll('img');
-                var loadedImages = 0;
-                
-                if (images.length > 0) {
-                    images.forEach(function(img) {
-                        if (img.complete) {
-                            loadedImages++;
-                        } else {
-                            img.addEventListener('load', function() {
-                                loadedImages++;
-                                if (loadedImages === images.length) {
-                                    setDimensions();
-                                    onScroll();
-                                }
-                            });
-                        }
-                    });
+                    var delta = e.deltaY;
+                    var isScrollingDown = delta > 0;
+                    var isScrollingUp = delta < 0;
+
+                    // Check bounds
+                    var atStart = currentScrollX <= 0;
+                    var atEnd = currentScrollX >= maxScroll;
+
+                    // Determine if we should intercept the scroll
+                    // We intercept if:
+                    // 1. Scrolling DOWN and NOT at the end
+                    // 2. Scrolling UP and NOT at the start
                     
-                    if (loadedImages === images.length) {
-                        setDimensions();
-                        onScroll();
+                    var shouldIntercept = false;
+
+                    if (isScrollingDown && !atEnd) {
+                        shouldIntercept = true;
+                    } else if (isScrollingUp && !atStart) {
+                        shouldIntercept = true;
                     }
-                } else {
-                    setDimensions();
-                    onScroll();
+
+                    if (shouldIntercept) {
+                        e.preventDefault();
+                        e.stopPropagation(); // Stop scrolling parent containers
+                        
+                        currentScrollX += delta;
+
+                        // Clamp values
+                        if (currentScrollX < 0) currentScrollX = 0;
+                        if (currentScrollX > maxScroll) currentScrollX = maxScroll;
+
+                        updateTrack();
+                    }
                 }
-                
-                setTimeout(function() {
-                    setDimensions();
-                    onScroll();
-                }, 500);
+
+                // Bind wheel event to the SECTION itself. 
+                // This ensures it activates when the mouse is OVER the section.
+                // The 'passive: false' is crucial for preventing default scroll.
+                section.addEventListener('wheel', onWheel, { passive: false });
             }
 
             if ( window.elementorFrontend ) {
                 elementorFrontend.hooks.addAction( 'frontend/element_ready/horizontal_scroll_gallery.default', function($scope){
-                    // Check if this is the correct widget
                     if ( $scope.find('#' + widgetId).length ) {
-                        initHorizontalScroll();
+                        setTimeout(function(){
+                            // Re-init on images loaded to ensure width is correct? 
+                            // Though scrollWidth usually updates automatically.
+                            jQuery(document).ready(initHorizontalScroll); 
+                        }, 200);
                     }
                 });
             } else {
