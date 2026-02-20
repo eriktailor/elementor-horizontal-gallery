@@ -126,8 +126,8 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
             .et-horizontal-track {
                 display: flex;
                 flex-wrap: nowrap;
-                height: 100%;
-                align-items: center;
+                height: 100%; /* Ensure track takes full height if wrapper has height */
+                align-items: stretch; /* Stretch items to full height */
                 gap: <?php echo $gap; ?>px;
                 padding: 0;
                 will-change: transform;
@@ -138,15 +138,15 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                    but percentage of parent is fine inside the track which will be wide */
                 flex: 0 0 calc((100vw / <?php echo $visible_items; ?>) - <?php echo $gap; ?>px); 
                 max-width: calc((100vw / <?php echo $visible_items; ?>) - <?php echo $gap; ?>px);
-                
+                height: <?php echo $image_height; ?>px; /* Force fixed height */
                 display: flex;
+                flex-direction: column;
                 justify-content: center;
-                align-items: center;
+                overflow: hidden;
             }
             .et-scroll-item img {
                 width: 100%;
-                height: auto;
-                max-height: <?php echo $image_height; ?>px;
+                height: 100%;
                 object-fit: cover;
                 display: block;
             }
@@ -250,60 +250,56 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
             var totalGaps = visibleItems - 1;
             var gapSpace = (totalGaps * gap) / visibleItems;
             var finalItemWidth = itemWidth - gapSpace;
+            var imageHeight = settings.image_height.size || 400;
         #>
-            <div class="et-scroll-wrapper">
-                <div class="et-scroll-container" style="gap: {{ settings.gap_width.size }}{{ settings.gap_width.unit }};">
-                    <# _.each( settings.gallery_images, function( image ) { #>
-                        <div class="et-scroll-item" style="flex: 0 0 {{ finalItemWidth }}%;">
-                            <img src="{{ image.url }}" alt="" style="max-height: {{ settings.image_height.size }}{{ settings.image_height.unit }};">
-                        </div>
-                    <# } ); #>
+            <div class="et-gallery-section" id="et-gallery-{{ id }}">
+                <div class="et-sticky-wrapper">
+                    <div class="et-horizontal-track">
+                        <# _.each( settings.gallery_images, function( image ) { #>
+                            <div class="et-scroll-item">
+                                <img src="{{ image.url }}" alt="">
+                            </div>
+                        <# } ); #>
+                    </div>
                 </div>
             </div>
             
             <style>
-                .elementor-element-{{ id }} .et-scroll-wrapper { 
-                    width: 100%; 
-                    overflow-x: auto; 
-                    overflow-y: hidden; 
-                    -webkit-overflow-scrolling: touch; 
-                    scroll-behavior: smooth;
+                .elementor-element-{{ id }} .et-gallery-section {
+                    width: 100%;
+                    position: relative;
+                    overflow: hidden;
                 }
-                
-                .elementor-element-{{ id }} .et-scroll-wrapper::-webkit-scrollbar {
-                    height: 6px;
-                }
-                
-                .elementor-element-{{ id }} .et-scroll-wrapper::-webkit-scrollbar-track {
-                    background: #f1f1f1;
-                }
-                
-                .elementor-element-{{ id }} .et-scroll-wrapper::-webkit-scrollbar-thumb {
-                    background: #888;
-                    border-radius: 3px;
-                }
-                
-                .elementor-element-{{ id }} .et-scroll-container { 
-                    display: flex; 
-                    flex-direction: row; 
-                    flex-wrap: nowrap; 
-                    align-items: stretch; 
-                    padding-bottom: 8px;
-                }
-                
-                .elementor-element-{{ id }} .et-scroll-item { 
-                    min-width: 0;
+                .elementor-element-{{ id }} .et-sticky-wrapper {
+                    width: 100%;
                     overflow: hidden;
                     display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    align-items: flex-start;
                 }
-                
-                .elementor-element-{{ id }} .et-scroll-item img { 
-                    width: 100%; 
-                    height: auto;
+                .elementor-element-{{ id }} .et-horizontal-track {
+                    display: flex;
+                    flex-wrap: nowrap;
+                    height: 100%;
+                    align-items: stretch;
+                    gap: {{ settings.gap_width.size }}{{ settings.gap_width.unit }};
+                    padding: 0;
+                    will-change: transform;
+                }
+                .elementor-element-{{ id }} .et-scroll-item {
+                    flex: 0 0 {{ finalItemWidth }}%;
+                    flex: 0 0 calc((100% / {{ visibleItems }}) - {{ settings.gap_width.size }}{{ settings.gap_width.unit }});
+                    max-width: calc((100% / {{ visibleItems }}) - {{ settings.gap_width.size }}{{ settings.gap_width.unit }});
+                    height: {{ settings.image_height.size }}{{ settings.image_height.unit }};
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    overflow: hidden;
+                }
+                .elementor-element-{{ id }} .et-scroll-item img {
+                    width: 100%;
+                    height: 100%;
                     object-fit: cover;
-                    display: block; 
+                    display: block;
                 }
             </style>
         <# } #>
