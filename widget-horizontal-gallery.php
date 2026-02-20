@@ -63,7 +63,7 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
             ]
         );
 
-        $this->add_control(
+        $this->add_responsive_control(
             'image_height',
             [
                 'label' => 'Image Height (px)',
@@ -73,6 +73,7 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                 'default' => [ 'unit' => 'px', 'size' => 400 ],
                 'selectors' => [
                     '{{WRAPPER}} .et-scroll-item img' => 'max-height: {{SIZE}}{{UNIT}};',
+                    '{{WRAPPER}} .et-scroll-item' => 'height: {{SIZE}}{{UNIT}};',
                 ],
             ]
         );
@@ -138,7 +139,7 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                    but percentage of parent is fine inside the track which will be wide */
                 flex: 0 0 calc((100vw / <?php echo $visible_items; ?>) - <?php echo $gap; ?>px); 
                 max-width: calc((100vw / <?php echo $visible_items; ?>) - <?php echo $gap; ?>px);
-                height: <?php echo $image_height; ?>px; /* Force fixed height */
+                /* Height handled by Elementor responsive controls now */
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -270,7 +271,7 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
             var totalGaps = visibleItems - 1;
             var gapSpace = (totalGaps * gap) / visibleItems;
             var finalItemWidth = itemWidth - gapSpace;
-            var imageHeight = settings.image_height.size || 400;
+            // Removed imageHeight variable as it's handled by responsive controls
         #>
             <div class="et-gallery-section" id="et-gallery-{{ id }}">
                 <div class="et-sticky-wrapper">
@@ -295,18 +296,6 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                     overflow: hidden;
                     display: flex;
                     align-items: flex-start;
-                
-                @media (max-width: 768px) {
-                    .elementor-element-{{ id }} .et-sticky-wrapper {
-                        overflow-x: auto;
-                        -webkit-overflow-scrolling: touch;
-                        scrollbar-width: none;
-                    }
-                    .elementor-element-{{ id }} .et-sticky-wrapper::-webkit-scrollbar { 
-                        display: none;
-                    }
-                }
-                
                 }
                 .elementor-element-{{ id }} .et-horizontal-track {
                     display: flex;
@@ -318,6 +307,29 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                     will-change: transform;
                 }
                 
+                @media (max-width: 768px) {
+                    .elementor-element-{{ id }} .et-sticky-wrapper {
+                        overflow-x: auto;
+                        -webkit-overflow-scrolling: touch;
+                        scrollbar-width: none;
+                    }
+                    .elementor-element-{{ id }} .et-sticky-wrapper::-webkit-scrollbar { 
+                        display: none;
+                    }
+                }
+
+                .elementor-element-{{ id }} .et-scroll-item {
+                    flex: 0 0 {{ finalItemWidth }}%;
+                    flex: 0 0 calc((100% / {{ visibleItems }}) - {{ settings.gap_width.size }}{{ settings.gap_width.unit }});
+                    max-width: calc((100% / {{ visibleItems }}) - {{ settings.gap_width.size }}{{ settings.gap_width.unit }});
+                    /* Height handled by Elementor responsive controls */
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    overflow: hidden;
+                }
+
+                .elementor-element-{{ id }} .et-scroll-item img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
