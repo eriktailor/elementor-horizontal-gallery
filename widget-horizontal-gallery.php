@@ -170,21 +170,9 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                 function updateTrack() {
                     track.style.transform = 'translateX(' + (-currentScrollX) + 'px)';
                 }
-                
-                // Reset for mobile
-                function checkMobile() {
-                    if (window.innerWidth <= 768) {
-                        track.style.transform = '';
-                        currentScrollX = 0;
-                    }
-                }
-                
-                window.addEventListener('resize', checkMobile);
 
-                function onWheel(e) {
-                    // Mobile check
-                    if (window.innerWidth <= 768) return;
-
+                // Handle both Mouse Wheel and Touch
+                function handleScrollMotion(delta, e) {
                     var trackWidth = track.scrollWidth;
                     var containerWidth = section.clientWidth;
                     var maxScroll = trackWidth - containerWidth;
@@ -192,30 +180,32 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                     // If content fits, no horizontal scroll needed
                     if (maxScroll <= 0) return;
 
-                    var delta = e.deltaY;
                     var isScrollingDown = delta > 0;
                     var isScrollingUp = delta < 0;
 
                     // Check bounds
+                    // currentScrollX might slightly drift due to float math, so use a small epsilon if needed, 
+                    // but integers are usually fine here.
                     var atStart = currentScrollX <= 0;
                     var atEnd = currentScrollX >= maxScroll;
 
-                    // Determine if we should intercept the scroll
-                    // We intercept if:
-                    // 1. Scrolling DOWN and NOT at the end
-                    // 2. Scrolling UP and NOT at the start
-                    
                     var shouldIntercept = false;
 
+                    // If scrolling down (moving forward) and we are not at the end
                     if (isScrollingDown && !atEnd) {
                         shouldIntercept = true;
-                    } else if (isScrollingUp && !atStart) {
+                    } 
+                    // If scrolling up (moving backward) and we are not at the start
+                    else if (isScrollingUp && !atStart) {
                         shouldIntercept = true;
                     }
 
                     if (shouldIntercept) {
-                        e.preventDefault();
-                        e.stopPropagation(); // Stop scrolling parent containers
+                        // Crucial: prevent page scroll
+                        if (e.cancelable !== false) {
+                            e.preventDefault();
+                            e.stopPropagation(); 
+                        }
                         
                         currentScrollX += delta;
 
@@ -227,9 +217,29 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                     }
                 }
 
+                function onWheel(e) {
+                    handleScrollMotion(e.deltaY, e);
+                }
+                
+                // Touch handling
+                var touchStartY = 0;
+                
+                section.addEventListener('touchstart', function(e) {
+                    touchStartY = e.touches[0].clientY;
+                }, { passive: false });
+                
+                section.addEventListener('touchmove', function(e) {
+                    var touchCurrentY = e.touches[0].clientY;
+                    var deltaY = touchStartY - touchCurrentY; // Down drag = negative diff, but we want positive delta for "scrolling down"
+                    
+                    // Update for next move
+                    touchStartY = touchCurrentY;
+                    
+                    handleScrollMotion(deltaY, e);
+                    
+                }, { passive: false });
+
                 // Bind wheel event to the SECTION itself. 
-                // This ensures it activates when the mouse is OVER the section.
-                // The 'passive: false' is crucial for preventing default scroll.
                 section.addEventListener('wheel', onWheel, { passive: false });
             }
 
@@ -308,28 +318,6 @@ class Elementor_Horizontal_Gallery_Widget extends \Elementor\Widget_Base {
                     will-change: transform;
                 }
                 
-                @media (max-width: 768px) {
-                    .elementor-element-{{ id }} .et-sticky-wrapper {
-                        overflow-x: auto;
-                        -webkit-overflow-scrolling: touch;
-                        scrollbar-width: none;
-                    }
-                    .elementor-element-{{ id }} .et-sticky-wrapper::-webkit-scrollbar { 
-                        display: none;
-                    }
-                }
-                
-                .elementor-element-{{ id }} .et-scroll-item {
-                    flex: 0 0 {{ finalItemWidth }}%;
-                    flex: 0 0 calc((100% / {{ visibleItems }}) - {{ settings.gap_width.size }}{{ settings.gap_width.unit }});
-                    max-width: calc((100% / {{ visibleItems }}) - {{ settings.gap_width.size }}{{ settings.gap_width.unit }});
-                    height: {{ settings.image_height.size }}{{ settings.image_height.unit }};
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    overflow: hidden;
-                }
-                .elementor-element-{{ id }} .et-scroll-item img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
